@@ -10,7 +10,7 @@ ADD . /app
 
 RUN sudo npm set unsafe-perm true
 RUN sudo npm install
-RUN sudo npm install jsonld
+RUN sudo npm install -g jsonld-cli
 
 RUN mkdir ~/.npm-global && \
     npm config set prefix '~/.npm-global'  && \

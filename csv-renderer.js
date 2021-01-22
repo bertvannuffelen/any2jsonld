@@ -114,12 +114,12 @@ function getData(template, data) {
             return information === "Waar" || information === "Ja"
         case "uri":
             return information === "" ? null : template["template_base_uri"] + camelCase(information);
-        case "list":
+        case "listOfUri":
             var items = [];
             for (var i = 1; i <= template["template_amount"]; i++) {
                 information = data[key + i];
                 if (information !== "") {
-                    items.push(information);
+                    items.push(template["template_base_uri"] + camelCase(information));
                 }
             }
             return items;

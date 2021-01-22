@@ -27,130 +27,120 @@ program.on('--help', function () {
 program.parse(process.argv);
 
 var output = program.output || 'output.json';
-var csvoptions = {
-    header: true,
-    skipEmptyLines: true,
-    complete: function (results) {
-        console.log("Finished:");
-    }
-}
 
-
-render_csv(program.template, program.input, output);
+stream_csv(program.template, program.input, output);
+// render_csv(program.template, program.input, output);
 console.log('done');
 
 
-function render_csv(templatefile, csvfilename, output) {
-    console.log('start reading');
-    var template = fs.readFileSync(templatefile, 'utf-8');
-    var csvf = fs.readFileSync(csvfilename, 'utf-8');
-    var csv = papaparse.parse(csvf, csvoptions);
 
-    var pt = parse_template(template);
-//  var ren = render_template(pt, {'ID':'een identifier', 'STRING' : 'een string waarde', 'BOOLEAN': 'true', 'VAL' : 'I do not know'});
-    var ren = render_template(pt, csv.data);
-//  console.log(ren);
 
-    /*
-      jsonfile.writeFile(output, ren, function (err) {
-            if (err) {
-               // Set the exit code if there's a problem so bash sees it
-               process.exitCode = 1;
-                       console.error(err);
-                       throw err;
-                       }
-            });
-    */
-
+function stream_csv(templateFilename, input, output) {
+    console.log('read template');
+    var rawdata = fs.readFileSync(templateFilename, 'utf-8');
+    let template = JSON.parse(rawdata);
+    console.log('start processing data');
     let writeStream = fs.createWriteStream(output);
-
-    write_data(writeStream, ren);
-    writeStream.on('finish', () => {
-        console.log('wrote all data to file');
-    });
-
-    // close the stream
-    writeStream.end();
-
-    console.log('finished rendering to ' + output);
-};
-
-
-function parse_template(file) {
-    var parsed_template = {
-        pt_full: [],
-        pt_vars: []
-    };
-
-    var file1 = file.split('{{');
-    var file2 = [];
-    for (i in file1) {
-        file2 = file2.concat(file1[i].split('}}'));
-    }
-    ;
-    parsed_template.pt_full = file2;
-
-    return parsed_template
-}
-
-function render_template(parsed_template, data) {
-    var renderedData = [];
-    for (i in data) {
-        renderedData[i] = render_template_single(parsed_template, data[i]);
-    }
-    return renderedData;
-};
-
-function render_template_single(parsed_template, data) {
-    let render = '';
-    for (i in parsed_template.pt_full) {
-        let reminder = i % 2;
-        if (reminder == 0) {
-            render = render + parsed_template.pt_full[i];
-        } else {
-            render = render + data[parsed_template.pt_full[i]].replace(/\"/g, '\\"').replace(/\t/g, ' ');
-        }
-    }
-    return render;
-}
-
-function write_data(stream, data) {
-    data.forEach((element, index) => {
-        stream.write(index === 0 ? "[" : ",")
-        stream.write(element);
-    });
-    stream.write("]");
-    return true;
-};
-
-/*
-const { Transform } = require('stream');
-
-const transformRow2Json = new Transform({
-  transform(chunk, encoding, callback) {
-    process.stdout.write('.');
-    callback(null, chunk);
-  }
-});
-*/
-
-function streamcsv(template, input, output) {
-
-    var out = Papa.parse(input, {
+    let first = true;
+    var csvf = fs.readFileSync(input, 'utf-8');
+    papaparse.parse(csvf, {
         header: true,
         skipEmptyLines: true,
         step: function (row) {
-            console.log("Row:", row.data);
-            console.log(render_template_single(template, data));
-            console.log("--------");
+            // console.log("Row:", row.data);
+            let entry = makeDataEntry(template, row.data);
+            // console.log(entry);
+            writeStream.write(first ? "[\n" : ",\n");
+            first = false;
+            writeStream.write(JSON.stringify(entry));
+            // console.log("--------");
 
         },
         complete: function () {
+            writeStream.write("]");
             console.log("All done!");
         }
     });
-    console.log(out);
 
 }
+
+
+function makeDataEntry(template, data) {
+    let tranformedData = {};
+
+    for (const key in template) {
+        let value = template[key];
+        if (typeof value === "string") {
+            if (value !== "") tranformedData[key] = value;
+        } else if (value instanceof Array) {
+            tranformedData[key] = [];
+            for (const index in value) {
+                let buildData = getDataEntry(value[index], data);
+                if (buildData != null) {
+                    tranformedData[key].push(buildData);
+                }
+            }
+        } else {
+            let buildData = getDataEntry(value, data);
+            if (buildData != null) {
+                tranformedData[key] = buildData;
+            }
+        }
+    }
+    return tranformedData;
+
+// "{\"@value\":{\n" +
+// "    \"type\":\"languageText\",\n" +
+// "    \"key\":\"AanbiederOrganisaite\"\n" +
+// "  },\"@language\":\"nl\"}"
+}
+
+function getDataEntry(value, data) {
+    if (value.hasOwnProperty('template_type') && value.hasOwnProperty("template_key")) {
+        return getData(value, data);
+    } else {
+        let buildData = makeDataEntry(value, data);
+        return Object.keys(buildData).length ? buildData : null;
+    }
+
+}
+
+function getData(template, data) {
+    let key = template["template_key"];
+    let information = data[key];
+
+    switch (template["template_type"]) {
+        case "boolean":
+            return information === "Waar" || information === "Ja"
+        case "uri":
+            return information === "" ? null : template["template_base_uri"] + camelCase(information);
+        case "list":
+            var items = [];
+            for (var i = 1; i <= template["template_amount"]; i++) {
+                information = data[key + i];
+                if (information !== "") {
+                    items.push(information);
+                }
+            }
+            return items;
+        case "date":
+            return information === "" ? null : information;
+        case "number":
+            let number = information === "" ? NaN : Number(information);
+            return isNaN(number) ? null : number;
+        case "text":
+        case "id":
+            return information === "" ? null : information;
+        case "languageText":
+            return information === "" ? null : {
+                '@value': information,
+                '@language': 'nl'
+            };
+        default:
+            console.warn("type not configured:" + template["template_type"]);
+            return "";
+    }
+}
+
 
 

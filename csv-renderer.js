@@ -50,14 +50,14 @@ function stream_csv(templateFilename, input, output) {
             // console.log("Row:", row.data);
             let entry = makeDataEntry(template, row.data);
             // console.log(entry);
-            writeStream.write(first ? "[\n" : ",\n");
+            writeStream.write(first ? "[\n" : "\n,");
             first = false;
             writeStream.write(JSON.stringify(entry));
             // console.log("--------");
 
         },
         complete: function () {
-            writeStream.write("]");
+            writeStream.write("\n]");
             console.log("All done!");
         }
     });
@@ -124,7 +124,8 @@ function getData(template, data) {
             }
             return items;
         case "date":
-            return information === "" ? null : information;
+            return information ==='9999/12/31 00:00:00' || information === "" ? null :
+                new Date(Date.parse(information)).toISOString();
         case "number":
             let number = information === "" ? NaN : Number(information);
             return isNaN(number) ? null : number;

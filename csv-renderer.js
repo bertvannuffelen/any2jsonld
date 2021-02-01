@@ -33,8 +33,6 @@ stream_csv(program.template, program.input, output);
 console.log('done');
 
 
-
-
 function stream_csv(templateFilename, input, output) {
     console.log('read template');
     var rawdata = fs.readFileSync(templateFilename, 'utf-8');
@@ -111,35 +109,46 @@ function getData(template, data) {
 
     switch (template["template_type"]) {
         case "boolean":
-            return information === "Waar" || information === "Ja"
+            return information === null || information === undefined ? null : information === "Waar" || information === "Ja"
         case "uri":
-            return information === "" ? null : template["template_base_uri"] + camelCase(information);
+            return !information ? null : template["template_base_uri"] + camelCase(information)
+        case "uri_gebruik":
+            switch (information){
+                case "":
+                    return null;
+                case "In gebruik":
+                    return template["template_base_uri"] + camelCase("wel")
+                case "Niet in gebruik":
+                    return template["template_base_uri"] + camelCase("niet")
+                default:
+                    console.warn("uri_gebruik does not know this information:" + information);
+                    return null;
+            }
         case "listOfUri":
             var items = [];
             for (var i = 1; i <= template["template_amount"]; i++) {
                 information = data[key + i];
-                if (information !== "") {
+                if (information) {
                     items.push(template["template_base_uri"] + camelCase(information));
                 }
             }
-            return items;
+            return items
         case "date":
-            return information ==='9999/12/31 00:00:00' || information === "" ? null :
-                new Date(Date.parse(information)).toISOString();
+            return !information || information === '9999/12/31 00:00:00' ? null : new Date(Date.parse(information)).toISOString()
         case "number":
-            let number = information === "" ? NaN : Number(information);
-            return isNaN(number) ? null : number;
+            let number = !information ? (information === '0' ? 0 : NaN) : Number(information);
+            return isNaN(number) ? null : number
         case "text":
         case "id":
-            return information === "" ? null : information;
+            return !information ? null : information
         case "languageText":
-            return information === "" ? null : {
+            return !information ? null : {
                 '@value': information,
                 '@language': 'nl'
-            };
+            }
         default:
             console.warn("type not configured:" + template["template_type"]);
-            return "";
+            return ""
     }
 }
 

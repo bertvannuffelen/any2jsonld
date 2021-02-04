@@ -106,49 +106,68 @@ function getDataEntry(value, data) {
 function getData(template, data) {
     let key = template["template_key"];
     let information = data[key];
+    information = information? information.trim(): information
 
-    switch (template["template_type"]) {
-        case "boolean":
-            return information === null || information === undefined ? null : information === "Waar" || information === "Ja"
-        case "uri":
-            return !information ? null : template["template_base_uri"] + camelCase(information)
-        case "uri_gebruik":
-            switch (information){
-                case "":
-                    return null;
-                case "In gebruik":
-                    return template["template_base_uri"] + camelCase("wel")
-                case "Niet in gebruik":
-                    return template["template_base_uri"] + camelCase("niet")
-                default:
-                    console.warn("uri_gebruik does not know this information:" + information);
-                    return null;
-            }
-        case "listOfUri":
-            var items = [];
-            for (var i = 1; i <= template["template_amount"]; i++) {
-                information = data[key + i];
-                if (information) {
-                    items.push(template["template_base_uri"] + camelCase(information));
+    const type = template["template_type"];
+    if (information) {
+        switch (type) {
+            case "boolean":
+                return information == 'true'
+            case "base_uri":
+                return template["template_base_uri"] + information
+            case "base_uri_beperking":
+                return template["template_base_uri"] + information ==="fysischNietRealiseerbaar"? information :information.toLowerCase()
+
+            case "base_uri_lower":
+                return template["template_base_uri"] + information.toLowerCase()
+            case "base_uri_camel_lower":
+                return template["template_base_uri"] + camelCase(information).toLowerCase()
+
+            case "base_uri_gebruik":
+                switch (information) {
+                    case "inGebruik":
+                        return template["template_base_uri"] + "wel"
+                    case "nietInGebruik":
+                        return template["template_base_uri"] + "niet"
+                    default:
+                        console.warn("uri_gebruik does not know this information:" + information);
+                        return template["template_base_uri"] + information;
                 }
-            }
-            return items
-        case "date":
-            return !information || information === '9999/12/31 00:00:00' ? null : new Date(Date.parse(information)).toISOString()
-        case "number":
-            let number = !information ? (information === '0' ? 0 : NaN) : Number(information);
-            return isNaN(number) ? null : number
-        case "text":
-        case "id":
-            return !information ? null : information
-        case "languageText":
-            return !information ? null : {
-                '@value': information,
-                '@language': 'nl'
-            }
-        default:
-            console.warn("type not configured:" + template["template_type"]);
-            return ""
+            case "date":
+                return information !== '9999/12/31 00:00:00' ? new Date(Date.parse(information)).toISOString() : null;
+            case "number":
+                let number = Number(information);
+                return isNaN(number) ? null : number
+            case "text":
+                if (template["template_filter_null"] && information === "<Null>"){
+                    return null;
+                }
+                if (template["template_filter_regex"]) {
+                    let match = information.match( template["template_filter_regex"] );
+                    return match ? match[0].replaceAll("\s", " ").replaceAll("\u2008", "") : null;
+                } else {
+                    return information;
+                }
+            case "id":
+            case "uri":
+                return information
+            case "wellknown_organisatie":
+                return "https://bedrijventerreinen.vlaanderen.be/id/.wellknown/genid/organisatie/" + information
+            case "languageText":
+                return {
+                    '@value': information,
+                    '@language': 'nl'
+                }
+            default:
+                console.warn("type not configured:" + type);
+                return null
+        }
+    } else {
+        if (type === "number") {
+            return information === '0' ? 0 : null;
+        } else {
+            return null;
+        }
     }
 }
 

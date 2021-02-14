@@ -44,11 +44,14 @@ function stream_csv(templateFilename, input, output) {
     papaparse.parse(csvf, {
         header: true,
         skipEmptyLines: true,
+        before: function (){
+            writeStream.write("[");
+        },
         step: function (row) {
             // console.log("Row:", row.data);
             let entry = makeDataEntry(template, row.data);
             // console.log(entry);
-            writeStream.write(first ? "[\n" : "\n,");
+            writeStream.write(first ? "\n" : "\n,");
             first = false;
             writeStream.write(JSON.stringify(entry));
             // console.log("--------");

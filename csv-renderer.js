@@ -44,14 +44,11 @@ function stream_csv(templateFilename, input, output) {
     papaparse.parse(csvf, {
         header: true,
         skipEmptyLines: true,
-        before: function (){
-            writeStream.write("[");
-        },
         step: function (row) {
             // console.log("Row:", row.data);
             let entry = makeDataEntry(template, row.data);
             // console.log(entry);
-            writeStream.write(first ? "\n" : "\n,");
+            writeStream.write(first ? "[\n" : "\n,");
             first = false;
             writeStream.write(JSON.stringify(entry));
             // console.log("--------");
@@ -108,8 +105,14 @@ function getDataEntry(value, data) {
 
 function getData(template, data) {
     let key = template["template_key"];
+    if (!(key in data)) {
+        if(key !== 'MISSING') {
+            console.warn("unknown key: " + key);
+        }
+        return null;
+    }
     let information = data[key];
-    information = information? information.trim(): information
+    information = information ? information.trim() : information
 
     const type = template["template_type"];
     if (information) {
@@ -119,7 +122,7 @@ function getData(template, data) {
             case "base_uri":
                 return template["template_base_uri"] + information
             case "base_uri_beperking":
-                return template["template_base_uri"] + information ==="fysischNietRealiseerbaar"? information :information.toLowerCase()
+                return template["template_base_uri"] + information === "fysischNietRealiseerbaar" ? information : information.toLowerCase()
 
             case "base_uri_lower":
                 return template["template_base_uri"] + information.toLowerCase()
@@ -142,11 +145,11 @@ function getData(template, data) {
                 let number = Number(information);
                 return isNaN(number) ? null : number
             case "text":
-                if (template["template_filter_null"] && information === "<Null>"){
+                if (template["template_filter_null"] && information === "<Null>") {
                     return null;
                 }
                 if (template["template_filter_regex"]) {
-                    let match = information.match( template["template_filter_regex"] );
+                    let match = information.match(template["template_filter_regex"]);
                     return match ? match[0].replaceAll("\s", " ").replaceAll("\u2008", "") : null;
                 } else {
                     return information;
@@ -155,7 +158,7 @@ function getData(template, data) {
             case "uri":
                 return information
             case "wellknown_organisatie":
-                return "https://bedrijventerreinen.vlaanderen.be/id/.wellknown/genid/organisatie/" + information
+                return "https://bedrijventerreinen.vlaanderen.be/id/.well-known/genid/organisatie/" + information
             case "languageText":
                 return {
                     '@value': information,

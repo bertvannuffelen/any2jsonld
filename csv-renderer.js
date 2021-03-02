@@ -159,7 +159,7 @@ function getData(template, data) {
             case "uri":
                 return information
             case "wellknown":
-                return "https://bedrijventerreinen.vlaanderen.be/id/.well-known/genid/"+template["template_known_type"]+"/" + sha3_512(information)
+                return "https://bedrijventerrein.vlaanderen.be/id/.well-known/genid/"+template["template_known_type"]+"/" + sha3_512(information)
             case "languageText":
                 return {
                     '@value': information,

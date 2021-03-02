@@ -3,6 +3,7 @@ const jsonfile = require('jsonfile');
 const jsonld = require('jsonld');
 const camelCase = require('camelcase');
 const papaparse = require('papaparse');
+const sha3_512 = require('js-sha3').sha3_512;
 
 
 var program = require('commander');
@@ -157,8 +158,8 @@ function getData(template, data) {
             case "id":
             case "uri":
                 return information
-            case "wellknown_organisatie":
-                return "https://bedrijventerreinen.vlaanderen.be/id/.well-known/genid/organisatie/" + information
+            case "wellknown":
+                return "https://bedrijventerreinen.vlaanderen.be/id/.well-known/genid/"+template["template_known_type"]+"/" + sha3_512(information)
             case "languageText":
                 return {
                     '@value': information,

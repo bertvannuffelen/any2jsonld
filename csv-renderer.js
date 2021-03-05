@@ -3,7 +3,7 @@ const jsonfile = require('jsonfile');
 const jsonld = require('jsonld');
 const camelCase = require('camelcase');
 const papaparse = require('papaparse');
-const sha3_512 = require('js-sha3').sha3_512;
+const sha3_256 = require('js-sha3').sha3_256;
 
 
 var program = require('commander');
@@ -45,11 +45,14 @@ function stream_csv(templateFilename, input, output) {
     papaparse.parse(csvf, {
         header: true,
         skipEmptyLines: true,
+        beforeFirstChunk: function(){
+            writeStream.write("[")
+        },
         step: function (row) {
             // console.log("Row:", row.data);
             let entry = makeDataEntry(template, row.data);
             // console.log(entry);
-            writeStream.write(first ? "[\n" : "\n,");
+            writeStream.write(first ? "\n" : "\n,");
             first = false;
             writeStream.write(JSON.stringify(entry));
             // console.log("--------");
@@ -159,7 +162,7 @@ function getData(template, data) {
             case "uri":
                 return information
             case "wellknown":
-                return "https://bedrijventerrein.vlaanderen.be/id/.well-known/genid/"+template["template_known_type"]+"/" + sha3_512(information)
+                return "https://bedrijventerrein.vlaanderen.be/id/.well-known/genid/"+template["template_known_type"]+"/" + sha3_256(information)
             case "languageText":
                 return {
                     '@value': information,

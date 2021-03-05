@@ -125,24 +125,8 @@ function getData(template, data) {
                 return information == 'true'
             case "base_uri":
                 return template["template_base_uri"] + information
-            case "base_uri_beperking":
-                return template["template_base_uri"] + information === "fysischNietRealiseerbaar" ? information : information.toLowerCase()
-
-            case "base_uri_lower":
-                return template["template_base_uri"] + information.toLowerCase()
-            case "base_uri_camel_lower":
-                return template["template_base_uri"] + camelCase(information).toLowerCase()
-
-            case "base_uri_gebruik":
-                switch (information) {
-                    case "inGebruik":
-                        return template["template_base_uri"] + "wel"
-                    case "nietInGebruik":
-                        return template["template_base_uri"] + "niet"
-                    default:
-                        console.warn("uri_gebruik does not know this information:" + information);
-                        return template["template_base_uri"] + information;
-                }
+            case "base_uri_camel":
+                return template["template_base_uri"] + camelCase(information)
             case "date":
                 return information !== '9999/12/31 00:00:00' ? new Date(Date.parse(information)).toISOString() : null;
             case "number":

@@ -4,6 +4,7 @@ const jsonld = require('jsonld');
 const camelCase = require('camelcase');
 const papaparse = require('papaparse');
 const sha3_256 = require('js-sha3').sha3_256;
+const uuid = require('uuid');
 
 
 var program = require('commander');
@@ -45,7 +46,7 @@ function stream_csv(templateFilename, input, output) {
     papaparse.parse(csvf, {
         header: true,
         skipEmptyLines: true,
-        beforeFirstChunk: function(){
+        beforeFirstChunk: function () {
             writeStream.write("[")
         },
         step: function (row) {
@@ -77,7 +78,8 @@ function makeDataEntry(template, data) {
         } else if (value instanceof Array) {
             tranformedData[key] = [];
             for (const index in value) {
-                let buildData = getDataEntry(value[index], data);
+                const item = value[index];
+                let buildData = typeof item === "string" ? item : getDataEntry(item, data)
                 if (buildData != null) {
                     tranformedData[key].push(buildData);
                 }
@@ -100,6 +102,8 @@ function makeDataEntry(template, data) {
 function getDataEntry(value, data) {
     if (value.hasOwnProperty('template_type') && value.hasOwnProperty("template_key")) {
         return getData(value, data);
+    }if (value.hasOwnProperty('template_type') && value["template_type"] === 'uuid'){
+        return uuid.v4()
     } else {
         let buildData = makeDataEntry(value, data);
         return Object.keys(buildData).length ? buildData : null;
@@ -110,7 +114,7 @@ function getDataEntry(value, data) {
 function getData(template, data) {
     let key = template["template_key"];
     if (!(key in data)) {
-        if(key !== 'MISSING') {
+        if (key !== 'MISSING') {
             console.warn("unknown key: " + key);
         }
         return null;
@@ -145,8 +149,14 @@ function getData(template, data) {
             case "id":
             case "uri":
                 return information
+            case "uuid":
+                const id_for_uuid = information.substr(information.indexOf("/id/") + 4);
+                return id_for_uuid.replaceAll("/", "-")
             case "wellknown":
-                return "https://bedrijventerrein.vlaanderen.be/id/.well-known/genid/"+template["template_known_type"]+"/" + sha3_256(information)
+                return "https://bedrijventerrein.vlaanderen.be/doc/.well-known/genid/" + template["template_known_type"] + "/" + sha3_256(information)
+            case "wellknown_uuid":
+                const uri = ".well-known/genid/" + template["template_known_type"] + "/" + sha3_256(information);
+                return uri.replaceAll("/", "-")
             case "languageText":
                 return {
                     '@value': information,
